@@ -41,12 +41,13 @@ const clickAction = {
     MINIMIZE: 1,
     LAUNCH: 2,
     CYCLE_WINDOWS: 3,
-    MINIMIZE_OR_OVERVIEW: 4,
-    PREVIEWS: 5,
-    MINIMIZE_OR_PREVIEWS: 6,
-    FOCUS_OR_PREVIEWS: 7,
-    FOCUS_MINIMIZE_OR_PREVIEWS: 8,
-    QUIT: 9
+    CYCLE_MINIMIZE: 4,
+    MINIMIZE_OR_OVERVIEW: 5,
+    PREVIEWS: 6,
+    MINIMIZE_OR_PREVIEWS: 7,
+    FOCUS_OR_PREVIEWS: 8,
+    FOCUS_MINIMIZE_OR_PREVIEWS: 9,
+    QUIT: 10
 };
 
 const scrollAction = {
@@ -474,6 +475,17 @@ class MyAppIcon extends Dash.DashIcon {
                     let w = windows[0];
                     Main.activateWindow(w);
                 }
+            case clickAction.CYCLE_MINIMIZE:
+                if (!Main.overview._shown) {
+                    if (this.app != focusedApp) {
+                        recentlyClickedApp = this.app;
+                        recentlyClickedAppWindows = windows;
+                        recentlyClickedAppMonitor = this.monitorIndex;
+                        recentlyClickedAppIndex = -1;
+                    }
+                    this._cycleThroughWindows(false, true);
+                } else
+                    this.app.activate();
                 break;
 
             case clickAction.LAUNCH:
@@ -706,7 +718,7 @@ class MyAppIcon extends Dash.DashIcon {
             windows[i].delete(global.get_current_time());
     }
 
-    _cycleThroughWindows(reversed) {
+    _cycleThroughWindows(reversed, minimize) {
         // Store for a little amount of time last clicked app and its windows
         // since the order changes upon window interaction
         let MEMORY_TIME=3000;
@@ -731,7 +743,7 @@ class MyAppIcon extends Dash.DashIcon {
             recentlyClickedApp = this.app;
             recentlyClickedAppWindows = app_windows;
             recentlyClickedAppMonitor = this.monitorIndex;
-            recentlyClickedAppIndex = 0;
+            recentlyClickedAppIndex = reserved ? 0 : -1;
         }
 
         if (reversed) {
@@ -740,10 +752,17 @@ class MyAppIcon extends Dash.DashIcon {
         } else {
             recentlyClickedAppIndex++;
         }
-        let index = recentlyClickedAppIndex % recentlyClickedAppWindows.length;
-        let window = recentlyClickedAppWindows[index];
 
-        Main.activateWindow(window);
+        let index = recentlyClickedAppIndex % recentlyClickedAppWindows.length;
+
+        if (minimize && recentlyClickedAppIndex !== 0 && index === 0) {
+            recentlyClickedAppWindows.forEach(function (w) { w.minimize(); });
+            recentlyClickedAppIndex = -1;
+        } else {
+            let window = recentlyClickedAppWindows[index];
+
+            Main.activateWindow(window);
+        }
     }
 
     _resetRecentlyClickedApp() {
